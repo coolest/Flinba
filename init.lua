@@ -1,6 +1,6 @@
 local holder = script.Parent
 
 return {
-    flinba = holder.flinba;
-    length = holder.length;
+    flinba  = holder.flinba;
+    info    = holder.info;
 }
