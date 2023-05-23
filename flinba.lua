@@ -29,10 +29,6 @@ function Flinba.new(force, friction, looseness, label)
     assert(type(looseness)              == "number", "Looseness is not a number");
     assert(label == nil or type(label)  == "string", "Label must be a string, if exists");
 
-    assert(type(friction)   > 0, "Friction has to be a positive non-zero number");
-    assert(type(force)      > 0, "Force has to be a positive non-zero number");
-    -- looseness can be negative (a bit odd but possible)
-
     local self = {}
     setmetatable(self, Flinba)
 
@@ -121,6 +117,8 @@ end
     
 ]]
 function Flinba:start()
+    assert(type(self.state.force)      > 0, "Force has to be a positive non-zero number");
+
     -- Event used to update the value
     local isServer = RunService:IsServer()
     local event = isServer
@@ -130,7 +128,7 @@ function Flinba:start()
     table.insert(self._garbage, event:Connect(function(dt)
         debug.profilebegin("FLINBA-" .. self._label .. "-STEPPED-"..(isServer and "SERVER" or "CLIENT"))
 
-        self.state.force -= (self.state.force/(1/self.state.friction))   * dt
+        self.state.force -= (self.state.force/(1/self.state.friction)) * dt
 
         self._protectedCalls(self._onStep, self.state.force*dt);
 
