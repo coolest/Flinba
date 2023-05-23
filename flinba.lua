@@ -117,7 +117,7 @@ end
     
 ]]
 function Flinba:start()
-    assert(type(self.state.force)      > 0, "Force has to be a positive non-zero number");
+    assert(type(self.state.force) > 0, "Force has to be a positive non-zero number");
 
     -- Event used to update the value
     local isServer = RunService:IsServer()
