@@ -34,7 +34,8 @@ function Flinba.new(force, friction, looseness, label)
 
     self.state = {
         force       = force;
-        friction    = friction;
+        looseness   = looseness;
+        friction    = {value = friction, initial = friction};
     };
 
     -- for profiling
@@ -109,16 +110,16 @@ function Flinba:getForce()
 end
 function Flinba:setForce(force) -- to increment force do something like flinba:setForce(flinba:getForce() + 1)
     assert(type(force) == "number", "Force is not a number");
-    assert(type(force) >= 0, "Force has to be a positive number");
 
     self.state.force = force;
+end
+function Flinba:isActive()
+    return #self._garbage > 0
 end
 --[[
     
 ]]
 function Flinba:start()
-    assert(type(self.state.force) > 0, "Force has to be a positive non-zero number");
-
     -- Event used to update the value
     local isServer = RunService:IsServer()
     local event = isServer
@@ -128,14 +129,17 @@ function Flinba:start()
     table.insert(self._garbage, event:Connect(function(dt)
         debug.profilebegin("FLINBA-" .. self._label .. "-STEPPED-"..(isServer and "SERVER" or "CLIENT"))
 
-        self.state.force -= (self.state.force/(1/self.state.friction)) * dt
+        self.state.force -= (self.state.force/(1/self.state.friction.value)) * dt
 
         self._protectedCalls(self._onStep, self.state.force*dt);
 
-        if self.state.force <= self.state.looseness then
+        if math.abs(self.state.force) <= self.state.looseness then
             self._protectedCalls(self._onComplete)
-
             self:destroy()
+        end
+
+        if self.state.kill then
+            self.state.friction.value *= (1+self.state.kill*dt)
         end
 
         debug.profileend()
@@ -153,6 +157,16 @@ function Flinba:destroy()
 
     table.clear(self._garbage)
     table.clear(self._onComplete)
+end
+
+function Flinba:setKill(kill)
+    assert(not kill or kill > 0, "Kill value has to be a positive non-zero number");
+
+    self.state.kill = kill;
+
+    if not kill then
+        self.state.friction.value = self.state.friction.initial
+    end
 end
 
 return Flinba

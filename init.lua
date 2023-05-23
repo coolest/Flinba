@@ -1,6 +1,6 @@
-local holder = script.Parent
+local holder = script
 
 return {
-    flinba  = holder.flinba;
-    info    = holder.info;
+    flinba  = require(holder.flinba);
+    info    = require(holder.info);
 }
