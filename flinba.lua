@@ -1,11 +1,18 @@
 local RunService = game:GetService("RunService")
 
+local profileCounter = 0;
+
 local Flinba = {}
 Flinba.__index = Flinba
 --[[
     For creating a new Fling Based Animation
+
+    NOTE:
+        You are creating a "force" where a "friction" like phenomon slows the force down, eventually to 0.
+        YOU ARE NOT tweening a value from a -> b. 
+        You **should be** subscribing to force changes and apply some mutation to an object or property based on the force each step.
 ]]
-function Flinba.new(force, friction, looseness)
+function Flinba.new(force, friction, looseness, label)
     -- default values
     if not force then
         force = 5
@@ -17,9 +24,10 @@ function Flinba.new(force, friction, looseness)
         looseness = 0.15;
     end
 
-    assert(type(force)      == "number", "Force is not a number");
-    assert(type(friction)   == "number", "Friction is not a number");
-    assert(type(looseness)  == "number", "Looseness is not a number");
+    assert(type(force)                  == "number", "Force is not a number");
+    assert(type(friction)               == "number", "Friction is not a number");
+    assert(type(looseness)              == "number", "Looseness is not a number");
+    assert(label == nil or type(label)  == "string", "Label must be a string, if exists");
 
     assert(type(friction)   > 0, "Friction has to be a positive non-zero number");
     assert(type(force)      > 0, "Force has to be a positive non-zero number");
@@ -31,16 +39,11 @@ function Flinba.new(force, friction, looseness)
     self.state = {
         force       = force;
         friction    = friction;
-
-        -- assumes you will use the alpha to determine the values (always starts at 0 and always ends at 1)
-        alpha       = 0;
     };
 
-    -- Event used to update the value
-    local isServer = RunService:IsServer()
-    self._onStep = isServer
-        and RunService.Stepped
-        or  RunService.RenderStepped
+    -- for profiling
+    self._label = label or tostring(profileCounter)
+    profileCounter+=1;
 
     -- Connections that will be cleaned up when destroyed
     self._garbage = {};
@@ -48,7 +51,43 @@ function Flinba.new(force, friction, looseness)
     -- Functions are stored here then called if the Flinba ever finishes
     self._onComplete = {};
     
+    -- Functions that are called during internal onStep
+    self._onStep = {}
+
     return self;
+end
+--[[
+    "top level" function for objects to protected called a bunch of functions then have the error (if existant)
+    formatted nicely
+
+    intention is for internal use so there are no assertions; obviously this function is exposed so usage could happen
+
+    NOTE:
+        functions :: array[ {"function", "string"} ]
+            where the "function" is the function to be called and should be of type "function" (this is not checked)
+            where the "string" is a traceback to what string put this function in the table to be called 
+]]
+function Flinba._protectedCalls(functions, ...)
+    if #functions == 0 then
+        return
+    end
+    
+    local catch = {}
+    for _, f in ipairs(functions) do
+        local ok, err = pcall(f[1], ...)
+        if not ok then
+            table.insert(catch, {err, f[2]})
+        end
+    end
+
+    if #catch > 0 then
+        local flattened = {}
+        for _, info in ipairs(catch) do
+            table.insert(table.concat(info, "\n"))
+        end
+
+        error(table.concat(flattened, "\n"))
+    end
 end
 --[[
 
@@ -56,20 +95,7 @@ end
 function Flinba:onStep(f)
     assert(type(f) == "function", "Did not provide a function to connect");
 
-    return table.insert(self._garbage, self._onStep:Connect(f));
-end
---[[
-    For stopping a Fling Based Animation before it is completed
-]]
-function Flinba:destroy()
-    for _, conn in ipairs(self._garbage) do
-        if conn and conn.Connected then
-            conn:Disconnect()
-        end
-    end
-
-    table.clear(self._garbage)
-    table.clear(self._onComplete)
+    return table.insert(self._onStep, {f, debug.traceback()})
 end
 --[[
     This method may have its drawbacks but it is more easier to implement
@@ -80,34 +106,55 @@ function Flinba:onComplete(f)
     table.insert(self._onComplete, {f, debug.traceback()}) -- might be excessive
 end
 --[[
-    Starts the alpha transition from 0 to 1
+    For mutating force (i.e. some event happened that increases the force)
+]]
+function Flinba:getForce()
+    return self.state.force;
+end
+function Flinba:setForce(force) -- to increment force do something like flinba:setForce(flinba:getForce() + 1)
+    assert(type(force) == "number", "Force is not a number");
+    assert(type(force) >= 0, "Force has to be a positive number");
+
+    self.state.force = force;
+end
+--[[
+    
 ]]
 function Flinba:start()
-    table.insert(self._garbage, self._onStep:Connect(function(dt)
-        self.state.alpha += self.state.force                                        * dt
-        self.state.force -= math.max(self.state.force/self.state.friction, 0.01)    * dt
+    -- Event used to update the value
+    local isServer = RunService:IsServer()
+    local event = isServer
+        and RunService.Stepped
+        or  RunService.RenderStepped
 
-        if self.state.alpha >= 1-self.state.looseness then
-            local catch = {}
-            for _, f in ipairs(self._onComplete) do
-                local ok, err = pcall(f[1])
-                if not ok then
-                    table.insert(catch, {err, f[2]})
-                end
-            end
+    table.insert(self._garbage, event:Connect(function(dt)
+        debug.profilebegin("FLINBA-" .. self._label .. "-STEPPED-"..(isServer and "SERVER" or "CLIENT"))
+
+        self.state.force -= (self.state.force/(1/self.state.friction))   * dt
+
+        self._protectedCalls(self._onStep, self.state.force*dt);
+
+        if self.state.force <= self.state.looseness then
+            self._protectedCalls(self._onComplete)
 
             self:destroy()
-
-            if #catch > 0 then
-                local flattened = {}
-                for _, info in ipairs(catch) do
-                    table.insert(table.concat(info, "\n"))
-                end
-
-                error(table.concat(flattened, "\n"))
-            end
         end
+
+        debug.profileend()
     end))
+end
+--[[
+    
+]]
+function Flinba:destroy()
+    for _, conn in ipairs(self._garbage) do
+        if conn and conn.Connected then
+            conn:Disconnect()
+        end
+    end
+
+    table.clear(self._garbage)
+    table.clear(self._onComplete)
 end
 
 return Flinba
