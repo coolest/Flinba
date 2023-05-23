@@ -37,6 +37,5 @@ end
  
  if calculateVeryComplicatedConditionals() then
   anim:destroy() -- stops the fliba animation and disconnects everything, etc. 
-   -- does not revert to initial value
  end
 ```
