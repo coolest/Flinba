@@ -83,7 +83,7 @@ function Flinba._protectedCalls(functions, ...)
             table.insert(table.concat(info, "\n"))
         end
 
-        error(table.concat(flattened, "\n"))
+        warn(table.concat(flattened, "\n"))
     end
 end
 --[[
