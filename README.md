@@ -17,7 +17,7 @@ local anim = flinba.new(force, friction, looseness, label)
 
 -- subscribe to force applications
 anim:onStep(function(force)
-  object.CFrame = object.CFrame + CFrame.Angles(0, force/15, 0) -- edit the objects value based off of the force given
+  object.CFrame = object.CFrame * CFrame.Angles(0, force/15, 0) -- edit the objects value based off of the force given
 end)
 
 anim:onComplete(function()
@@ -37,5 +37,7 @@ end
  
  if calculateVeryComplicatedConditionals() then
   anim:destroy() -- stops the fliba animation and disconnects everything, etc. 
+  -- OR
+  anim:kill(5) --> increases friction by a factor of 5 every second (compounded so 5(1s) -> 25(2s) -> 125(3s))
  end
 ```
