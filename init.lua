@@ -12,6 +12,7 @@ function FlinbaBuilder.new()
         force       = 5; 
         friction    = {value = 5; initial = 5};
         looseness   = 0.15;
+        bounds      = {min = -math.huge, max = math.huge};
     };
     self._onComplete    = {}
     self._onStep        = {} -- a function container that will be looped over and called every step
@@ -44,6 +45,15 @@ function FlinbaBuilder:addLooseness(looseness)
     self._state.looseness = looseness;
 
     return self
+end
+
+function FlinbaBuilder:addBounds(min, max)
+    assert(type(min) == "number", "Min value is not a number");
+    assert(type(max) == "number", "Max value is not a number");
+
+    self._state.bounds = {min = min, max = max};
+
+    return;
 end
 
 function FlinbaBuilder:onStep(f)
@@ -93,10 +103,14 @@ function FlinbaBuilder:start()
         or  RunService.RenderStepped
 
     table.insert(self._conns, event:Connect(function(dt)
-        self._state.force -= (self._state.force/(1/self._state.friction.value)) * dt
+        self._state.force = math.clamp(
+            self._state.force - (self._state.force/(1/self._state.friction.value)) * dt,
+            self._state.bounds.min,
+            self._state.bounds.max
+        )
 
         for _, funcBuilder in ipairs(self._onStep) do
-            funcBuilder:call();
+            funcBuilder:call(self._state.force);
         end
 
         if math.abs(self._state.force) <= self._state.looseness then
@@ -151,6 +165,7 @@ FlinbaBuilder.setForce = FlinbaBuilder.addForce;
 function FlinbaBuilder:getForce()       return self._state.force;       end;
 function FlinbaBuilder:getFriction()    return self._state.friction;    end;
 function FlinbaBuilder:getLooseness()   return self._state.looseness;   end;
+function FlinbaBuilder:getBounds()      return self._state.bounds;      end;
 
 function FlinbaBuilder:isActive()       return #self._conns > 0         end;
 
