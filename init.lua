@@ -99,8 +99,6 @@ function FlinbaBuilder:start()
             funcBuilder:call();
         end
 
-        self._protectedCalls(self._onStep, self._state.force*dt);
-
         if math.abs(self._state.force) <= self._state.looseness then
             for _, funcBuilder in ipairs(self._onComplete) do
                 funcBuilder:call();
