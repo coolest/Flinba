@@ -93,15 +93,15 @@ function FlinbaBuilder:start()
         or  RunService.RenderStepped
 
     table.insert(self._conns, event:Connect(function(dt)
-        self.state.force -= (self.state.force/(1/self.state.friction.value)) * dt
+        self._state.force -= (self._state.force/(1/self._state.friction.value)) * dt
 
         for _, funcBuilder in ipairs(self._onStep) do
             funcBuilder:call();
         end
 
-        self._protectedCalls(self._onStep, self.state.force*dt);
+        self._protectedCalls(self._onStep, self._state.force*dt);
 
-        if math.abs(self.state.force) <= self.state.looseness then
+        if math.abs(self._state.force) <= self._state.looseness then
             for _, funcBuilder in ipairs(self._onComplete) do
                 funcBuilder:call();
             end
@@ -109,8 +109,8 @@ function FlinbaBuilder:start()
             self:destroy()
         end
 
-        if self.state.kill then
-            self.state.friction.value -= self.state.kill*dt
+        if self._state.kill then
+            self._state.friction.value -= self._state.kill*dt
         end
     end))
 
@@ -118,19 +118,19 @@ function FlinbaBuilder:start()
 end
 
 --[[
-    For changing the state during the Flinba is active
+    For changing the _state during the Flinba is active
 
     NOTE:
-        The add methods can be used to change state while Flinba is active at any time (may or may not be bad design)
+        The add methods can be used to change _state while Flinba is active at any time (may or may not be bad design)
 ]]
 
 function FlinbaBuilder:setKill(kill)
     assert(not kill or kill > 0, "Kill value has to be a positive non-zero number");
 
-    self.state.kill = kill;
+    self._state.kill = kill;
 
     if not kill then
-        self.state.friction.value = self.state.friction.initial
+        self._state.friction.value = self._state.friction.initial
     end
 
     return self;
