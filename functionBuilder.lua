@@ -2,7 +2,10 @@ local FunctionBuilder = {}
 FunctionBuilder.__index = FunctionBuilder;
 
 function FunctionBuilder.new()
-    local self = {}
+    local self = {
+        _function   = function() end;
+        _traceback  = "";
+    }
 
     setmetatable(self, FunctionBuilder)
 
