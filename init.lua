@@ -9,7 +9,7 @@ function FlinbaBuilder.new()
     local self          = {}
 
     self._state         = {
-        force       = 5; 
+        force       = 5;
         friction    = {value = 5; initial = 5};
         looseness   = 0.15;
         bounds      = {min = -math.huge, max = math.huge};
@@ -34,7 +34,7 @@ end
 function FlinbaBuilder:addFriction(friction)
     assert(type(friction) == "number", "Friction is not a number");
 
-    self._state.friction = friction;
+    self._state.friction = {value = friction, initial = friction};
 
     return self
 end
@@ -53,7 +53,7 @@ function FlinbaBuilder:addBounds(min, max)
 
     self._state.bounds = {min = min, max = max};
 
-    return;
+    return self;
 end
 
 function FlinbaBuilder:onStep(f)
@@ -107,7 +107,7 @@ function FlinbaBuilder:start()
             self._state.force - (self._state.force/(1/self._state.friction.value)) * dt,
             self._state.bounds.min,
             self._state.bounds.max
-        )
+        );
 
         for _, funcBuilder in ipairs(self._onStep) do
             funcBuilder:call(self._state.force);
@@ -122,7 +122,7 @@ function FlinbaBuilder:start()
         end
 
         if self._state.kill then
-            self._state.friction.value -= self._state.kill*dt
+            self._state.friction.value += self._state.kill*dt
         end
     end))
 
