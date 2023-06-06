@@ -81,7 +81,7 @@ end
 function FlinbaBuilder:removeFromComplete(i)
     assert(type(i) == "number", "You remove functions by passing in an index.")
 
-    return table.remove(self._onComplete, i);
+    self._onComplete[i]:destroy()
 end
 
 function FlinbaBuilder:destroy()
